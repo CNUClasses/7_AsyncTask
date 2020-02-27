@@ -21,7 +21,6 @@ public class AsyncTaskActivity extends Activity {
     ProgressBar pBar;
     private UpdateTask myUpdateTask=null;
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
