@@ -33,77 +33,101 @@ public class AsyncTaskActivity extends Activity {
 
         //what is the max value
         pBar.setMax(P_BAR_MAX);
+    }
 
-        //lets see if the device rotated and we need to regrab it
-        myUpdateTask = (UpdateTask) getLastNonConfigurationInstance();
+
+    //see https://developer.android.com/guide/components/activities/activity-lifecycle
+    //must detach and attach thread in onStop and onStart
+    @Override
+    protected void onStart() {
+        super.onStart();
+        //lets see if the device rotated and we need to regrab thread
+        //create or get ref to existing singleton, and then get the thread it's holding
+        myUpdateTask = (UpdateTask)Singleton.getInstance().get_thread();
 
         //if a thread was retained then grab it
         if (myUpdateTask != null) {
             myUpdateTask.attach(this);
             pBar.setProgress(myUpdateTask.progress);
         }
+
+        //set the buttonstate accordingly
+        bStart.setEnabled(Singleton.getInstance().get_startState());
+        bStop.setEnabled(!Singleton.getInstance().get_startState());
     }
 
-    /**
-     * Called by the system, as part of destroying an
-     * activity due to a configuration change, when it is known that a new
-     * instance will immediately be created for the new configuration.  You
-     * can return any object you like here, including the activity instance
-     * itself, which can later be retrieved by calling
-     * {@link #getLastNonConfigurationInstance()} in the new activity
-     * instance.
-     * <p/>
-     * <em>If you are targeting {@link android.os.Build.VERSION_CODES#HONEYCOMB}
-     * or later, consider instead using a {@link Fragment} with
-     * {@link Fragment#setRetainInstance(boolean)
-     * Fragment.setRetainInstance(boolean}.</em>
-     * <p/>
-     * <p>This function is called purely as an optimization, and you must
-     * not rely on it being called.  When it is called, a number of guarantees
-     * will be made to help optimize configuration switching:
-     * <ul>
-     * <li> The function will be called between {@link #onStop} and
-     * {@link #onDestroy}.
-     * <li> A new instance of the activity will <em>always</em> be immediately
-     * created after this one's {@link #onDestroy()} is called.  In particular,
-     * <em>no</em> messages will be dispatched during this time (when the returned
-     * object does not have an activity to be associated with).
-     * <li> The object you return here will <em>always</em> be available from
-     * the {@link #getLastNonConfigurationInstance()} method of the following
-     * activity instance as described there.
-     * </ul>
-     * <p/>
-     * <p>These guarantees are designed so that an activity can use this API
-     * to propagate extensive state from the old to new activity instance, from
-     * loaded bitmaps, to network connections, to evenly actively running
-     * threads.  Note that you should <em>not</em> propagate any data that
-     * may change based on the configuration, including any data loaded from
-     * resources such as strings, layouts, or drawables.
-     * <p/>
-     * <p>The guarantee of no message handling during the switch to the next
-     * activity simplifies use with active objects.  For example if your retained
-     * state is an {@link android.os.AsyncTask} you are guaranteed that its
-     * call back functions (like {@link android.os.AsyncTask#onPostExecute}) will
-     * not be called from the call here until you execute the next instance's
-     * {@link #onCreate(android.os.Bundle)}.  (Note however that there is of course no such
-     * guarantee for {@link android.os.AsyncTask#doInBackground} since that is
-     * running in a separate thread.)
-     *
-     * @return Return any Object holding the desired state to propagate to the
-     * next activity instance.
-     * @deprecated Use the new {@link Fragment} API
-     * {@link Fragment#setRetainInstance(boolean)} instead; this is also
-     * available on older platforms through the Android compatibility package.
-     */
     @Override
-    public Object onRetainNonConfigurationInstance() {
+    protected void onStop() {
+        super.onStop();
+        //oh no, we rotated, save the thread
         if (myUpdateTask != null) {
-            Log.d(TAG, "onRetainNonConfigurationInstance");
+            Log.d(TAG, "onStop");
             myUpdateTask.detach();
-            return (myUpdateTask);
-        } else
-            return super.onRetainNonConfigurationInstance();
+            Singleton.getInstance().set_thread(myUpdateTask);
+            Singleton.getInstance().set_startState(bStart.isEnabled());
+        }
     }
+
+//    /**
+//     * Called by the system, as part of destroying an
+//     * activity due to a configuration change, when it is known that a new
+//     * instance will immediately be created for the new configuration.  You
+//     * can return any object you like here, including the activity instance
+//     * itself, which can later be retrieved by calling
+//     * {@link #getLastNonConfigurationInstance()} in the new activity
+//     * instance.
+//     * <p/>
+//     * <em>If you are targeting {@link android.os.Build.VERSION_CODES#HONEYCOMB}
+//     * or later, consider instead using a {@link Fragment} with
+//     * {@link Fragment#setRetainInstance(boolean)
+//     * Fragment.setRetainInstance(boolean}.</em>
+//     * <p/>
+//     * <p>This function is called purely as an optimization, and you must
+//     * not rely on it being called.  When it is called, a number of guarantees
+//     * will be made to help optimize configuration switching:
+//     * <ul>
+//     * <li> The function will be called between {@link #onStop} and
+//     * {@link #onDestroy}.
+//     * <li> A new instance of the activity will <em>always</em> be immediately
+//     * created after this one's {@link #onDestroy()} is called.  In particular,
+//     * <em>no</em> messages will be dispatched during this time (when the returned
+//     * object does not have an activity to be associated with).
+//     * <li> The object you return here will <em>always</em> be available from
+//     * the {@link #getLastNonConfigurationInstance()} method of the following
+//     * activity instance as described there.
+//     * </ul>
+//     * <p/>
+//     * <p>These guarantees are designed so that an activity can use this API
+//     * to propagate extensive state from the old to new activity instance, from
+//     * loaded bitmaps, to network connections, to evenly actively running
+//     * threads.  Note that you should <em>not</em> propagate any data that
+//     * may change based on the configuration, including any data loaded from
+//     * resources such as strings, layouts, or drawables.
+//     * <p/>
+//     * <p>The guarantee of no message handling during the switch to the next
+//     * activity simplifies use with active objects.  For example if your retained
+//     * state is an {@link android.os.AsyncTask} you are guaranteed that its
+//     * call back functions (like {@link android.os.AsyncTask#onPostExecute}) will
+//     * not be called from the call here until you execute the next instance's
+//     * {@link #onCreate(android.os.Bundle)}.  (Note however that there is of course no such
+//     * guarantee for {@link android.os.AsyncTask#doInBackground} since that is
+//     * running in a separate thread.)
+//     *
+//     * @return Return any Object holding the desired state to propagate to the
+//     * next activity instance.
+//     * @deprecated Use the new {@link Fragment} API
+//     * {@link Fragment#setRetainInstance(boolean)} instead; this is also
+//     * available on older platforms through the Android compatibility package.
+//     */
+//    @Override
+//    public Object onRetainNonConfigurationInstance() {
+//        if (myUpdateTask != null) {
+//            Log.d(TAG, "onRetainNonConfigurationInstance");
+//            myUpdateTask.detach();
+//            return (myUpdateTask);
+//        } else
+//            return super.onRetainNonConfigurationInstance();
+//    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -139,6 +163,14 @@ public class AsyncTaskActivity extends Activity {
         myUpdateTask.cancel(true);
     }
 
+    public void doButton(View view) {
+        try {
+            Thread.sleep(25000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
     //****************************************
     //notice I only define what will be returned to
     //onCanceled or onPostExecute
@@ -160,7 +192,6 @@ public class AsyncTaskActivity extends Activity {
         public UpdateTask(AsyncTaskActivity activity) {
             attach(activity);
             Log.d(TAG, "          ATACHING");
-
         }
 
         // grab a reference to this activity, mindful of leaks
